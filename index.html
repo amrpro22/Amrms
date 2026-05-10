@@ -64,7 +64,7 @@
 
     <!-- Law Sections Container -->
     <div class="p-6 md:p-10 space-y-4 max-h-[60vh] overflow-y-auto" id="lawContainer">
-        <!-- يتم ملء البنود هنا بواسطة الجافا سكريبت -->
+        <!-- البنود تظهر هنا -->
     </div>
 
     <!-- Final Signing Section -->
@@ -92,7 +92,7 @@
     <div class="p-6 bg-white border-t border-gray-100">
         <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
             <span class="w-2 h-6 bg-blue-600 rounded-full"></span>
-            قائمة الموقعين على القانون (سحابياً)
+            قائمة الموقعين على القانون
         </h3>
         <div class="overflow-x-auto rounded-xl border border-gray-100">
             <table class="w-full text-right text-sm">
@@ -105,7 +105,7 @@
                 </thead>
                 <tbody id="signaturesTableBody" class="divide-y divide-gray-50">
                     <tr>
-                        <td colspan="3" class="px-4 py-8 text-center text-gray-400 italic">جاري تحميل قائمة الموقعين...</td>
+                        <td colspan="3" class="px-4 py-8 text-center text-gray-400 italic">بانتظار تسجيل أول توقيع...</td>
                     </tr>
                 </tbody>
             </table>
@@ -118,52 +118,49 @@
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // البنود القانونية كما وردت
     const lawData = [
-        { t: "1. مبدأ التكافل والمشاركة المجتمعية", c: "يقوم الصندوق على مبدأ التكافل الاجتماعي والتعاون بين أبناء القرية، وعلى جميع أبناء القرية المقتدرين المشاركة والمساهمة فيه..." },
-        { t: "2. تنظيم التبرعات وتوثيقها ومنع التبرع المباشر", c: "جميع التبرعات والمساهمات المالية الخاصة بالحالات المرضية أو الطارئة يجب أن تدخل عبر الصندوق فقط، وتوثق رسميًا وبشكل واضح..." },
-        { t: "3. نطاق تغطية الصندوق وحدود مسؤوليته", c: "يقتصر دعم الصندوق على تكاليف العلاج، والفحوصات، والعمليات، والأدوية الأساسية، والرقود بالمستشفى فقط..." },
-        { t: "4. انتهاء مسؤولية الصندوق بعد الوفاة", c: "تنتهي مسؤولية الصندوق فور وفاة الحالة بشكل كامل ونهائي، ولا يتحمل أي مصاريف لاحقة تتعلق بالدفن أو العزاء..." },
-        { t: "5. تنظيم الحالات البسيطة", c: "الحالات التي تقل تكلفتها عن 200 ألف ريال يمني، إذا كانت الأسرة قادرة ومقتدرة ماليًا، لا يشملها دعم الصندوق." },
-        { t: "6. التحقق الصارم من الحالات قبل الدعم", c: "لا يتم اعتماد أي حالة أو صرف أي مبلغ إلا بعد التحقق الكامل والدقيق من صحة الحالة واحتياجها الفعلي." },
-        { t: "7. القيادة التنفيذية والصلاحيات المخولة", c: "يتولى إدارة الصندوق والإشراف المباشر: مصطفى الشجاع، أحمد بن أحمد الشجاع، نبيل الشجاع، ومحمد بن محمد الشجاع." },
-        { t: "8. نظام دعم الحالات الطارئة وضوابط الصرف", c: "يختص الصندوق بدعم الحالات المرضية الطارئة والحوادث العرضية وفق نظام مالي منظم وضوابط صارمة تحفظ أموال الصندوق." },
-        { t: "9. الشورى والتصويت", c: "جميع القرارات المصيرية أو الحالات الكبيرة أو التعديلات الجوهرية تعتمد بالشورى والتصويت، ويكون قرار الأغلبية ملزمًا للجميع." },
-        { t: "10. سرية المجموعة وحماية خصوصية العمل", c: "يُمنع منعًا باتًا إخراج أي أسرار من المجموعة، سواء كانت قرارات، تصويتات، أو حالات مرضية. أي إخلال يعتبر خيانة للأمانة." },
-        { t: "11. منع الشقاق وإثارة الفتن", c: "يُمنع منعًا باتًا نقل الأخبار أو إثارة الخلافات أو شق الصف أو نشر النعرات أو خلق الانقسامات داخل الصندوق أو اللجنة." },
-        { t: "12. أخلاقيات وسلوك أعضاء اللجنة التشاورية", c: "يلتزم الأعضاء بالعقل والحكمة والأخلاق والهدوء وضبط النفس بعيدًا عن العصبية والغوغاء." },
-        { t: "13. الالتزام بالحضور والتفاعل الإداري", c: "التغيب عن ثلاثة تصويتات متتالية يؤدي لمنح مهلة 30 يومًا قبل إمكانية استبدال العضو بشخص أكثر كفاءة." },
-        { t: "14. الإعفاء من العضوية والعقوبات التنظيمية", c: "يحق للإدارة إعفاء أي عضو يثبت عليه الإهمال أو التقصير أو كثرة الجدل الفارغ أو الإضرار بمصلحة الصندوق." },
-        { t: "15. الحرمان الكامل من الدعم", c: "أي شخص يطلب دعمًا ثم يتلقى دعمًا من الخارج أو ينشر حالته سراً لجمع التبرعات دون علم الإدارة يحرم من الدعم." },
-        { t: "16. أولوية الدعم وربط الحق بالواجب", c: "الأولوية للحالات الأشد خطراً، ويعتبر الالتزام بالمساهمة شرطاً أساسياً للاستفادة من الصندوق." },
-        { t: "17. الشافافية المالية وسجل المشاركين", c: "أموال الصندوق أمانة جماعية، وقد تم وضع رابط رسمي يظهر فيه جميع المشاركين ومبالغ مساهماتهم." },
-        { t: "18. التزام أعضاء الإدارة واللجنة بالمساهمة", c: "يلتزم جميع أعضاء الإدارة واللجنة بإنزال مساهماتهم كقدوة أولى في الالتزام وتحمل المسؤولية." },
-        { t: "19. احترام القرار الجماعي", c: "بعد اتخاذ القرار واعتماده، يلتزم الجميع باحترامه والعمل به وعدم إثارة الخلاف حوله." },
-        { t: "20. المصلحة العامة فوق المصالح الشخصية", c: "كل عمل أو قرار داخل الصندوق يجب أن يكون قائمًا على مصلحة الصندوق والقرية فوق أي مصلحة شخصية." }
+        { t: "1. مبدأ التكافل والمشاركة المجتمعية", c: "يقوم الصندوق على مبدأ التكافل الاجتماعي والتعاون بين أبناء القرية..." },
+        { t: "2. تنظيم التبرعات وتوثيقها ومنع التبرع المباشر", c: "جميع التبرعات يجب أن تدخل عبر الصندوق فقط وتوثق رسمياً..." },
+        { t: "3. نطاق تغطية الصندوق وحدود مسؤوليته", c: "يقتصر الدعم على تكاليف العلاج والفحوصات والعمليات والأدوية فقط..." },
+        { t: "4. انتهاء مسؤولية الصندوق بعد الوفاة", c: "تنتهي مسؤولية الصندوق فور وفاة الحالة بشكل كامل ونهائي..." },
+        { t: "5. تنظيم الحالات البسيطة", c: "الحالات التي تقل تكلفتها عن 200 ألف ريال يمني لا يشملها الدعم إذا كانت الأسرة مقتدرة." },
+        { t: "6. التحقق الصارم من الحالات قبل الدعم", c: "لا يتم اعتماد أي حالة إلا بعد التحقق الكامل والدقيق من صحة الاحتياج." },
+        { t: "7. القيادة التنفيذية والصلاحيات المخولة", c: "يتولى الإدارة: مصطفى الشجاع، أحمد بن أحمد الشجاع، نبيل الشجاع، ومحمد بن محمد الشجاع." },
+        { t: "8. نظام دعم الحالات الطارئة وضوابط الصرف", c: "نظام مالي منظم وسقف 2 مليون ريال، ولا صرف خارج نطاق اللوائح." },
+        { t: "9. الشورى والتصويت", c: "جميع القرارات المصيرية تعتمد بالشورى والتصويت، ويكون قرار الأغلبية ملزمًا." },
+        { t: "10. سرية المجموعة وحماية خصوصية العمل", c: "يُمنع إخراج أسرار العمل، وأي إخلال بهذا البند يعتبر خيانة للأمانة." },
+        { t: "11. منع الشقاق وإثارة الفتن", c: "يُمنع نقل الأخبار أو إثارة الخلافات أو شق الصف داخل اللجنة أو القرية." },
+        { t: "12. أخلاقيات وسلوك أعضاء اللجنة", c: "الالتزام بالعقل والحكمة والهدوء بعيداً عن العصبية والغوغاء." },
+        { t: "13. الالتزام بالحضور والتفاعل الإداري", c: "التغيب عن 3 تصويتات يؤدي لمنح مهلة قبل استبدال العضو." },
+        { t: "14. الإعفاء من العضوية والعقوبات", c: "يحق للإدارة إعفاء أي عضو يثبت عليه الإهمال أو التقصير." },
+        { t: "15. الحرمان الكامل من الدعم", c: "من يطلب دعماً ويجمع تبرعات سراً دون علم الإدارة يحرم من الدعم." },
+        { t: "16. أولوية الدعم وربط الحق بالواجب", c: "الأولوية للحالات الأشد خطراً، والالتزام بالمساهمة شرط للاستفادة." },
+        { t: "17. الشفافية المالية وسجل المشاركين", c: "أموال الصندوق أمانة جماعية تدار بصدق وشفافية كاملة." },
+        { t: "18. التزام أعضاء الإدارة واللجنة بالمساهمة", c: "أعضاء الإدارة هم القدوة الأولى في التضحية والالتزام المالي." },
+        { t: "19. احترام القرار الجماعي", c: "بعد اتخاذ القرار، يلتزم الجميع باحترامه والعمل به وعدم إثارته." },
+        { t: "20. المصلحة العامة فوق المصالح الشخصية", c: "مصلحة القرية فوق أي مصلحة شخصية أو خلاف فردي." }
     ];
 
-    // الإعدادات
-    const firebaseConfig = JSON.parse(__firebase_config);
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'mahbran-signature-v3';
+    // تهيئة البنود فوراً قبل أي عملية أخرى
+    function renderLaws() {
+        const lawContainer = document.getElementById('lawContainer');
+        lawContainer.innerHTML = ''; // تنظيف الحاوية
+        lawData.forEach((item) => {
+            const div = document.createElement('div');
+            div.className = "law-item p-4 rounded-xl border border-gray-100 bg-gray-50/50 flex gap-4";
+            div.innerHTML = `
+                <input type="checkbox" class="item-check custom-checkbox mt-1 shrink-0">
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-1 text-sm md:text-base">${item.t}</h3>
+                    <p class="text-xs md:text-sm text-gray-500 leading-relaxed">${item.c}</p>
+                </div>
+            `;
+            lawContainer.appendChild(div);
+        });
+    }
+    renderLaws();
 
-    // ملء البنود
-    const lawContainer = document.getElementById('lawContainer');
-    lawData.forEach((item) => {
-        const div = document.createElement('div');
-        div.className = "law-item p-4 rounded-xl border border-gray-100 bg-gray-50/50 flex gap-4";
-        div.innerHTML = `
-            <input type="checkbox" class="item-check custom-checkbox mt-1 shrink-0">
-            <div>
-                <h3 class="font-bold text-gray-800 mb-1 text-sm md:text-base">${item.t}</h3>
-                <p class="text-xs md:text-sm text-gray-500 leading-relaxed">${item.c}</p>
-            </div>
-        `;
-        lawContainer.appendChild(div);
-    });
-
+    // متغيرات الـ UI
     const checks = document.querySelectorAll('.item-check');
     const submitBtn = document.getElementById('submitBtn');
     const btnLabel = document.getElementById('btnLabel');
@@ -172,18 +169,14 @@
     const progressText = document.getElementById('progressText');
     const signaturesTableBody = document.getElementById('signaturesTableBody');
 
-    // وظيفة التحقق لتفعيل الزر
     function validate() {
         const checkedCount = Array.from(checks).filter(c => c.checked).length;
         const total = checks.length;
         const name = fullNameInput.value.trim();
-        
-        // تحديث شريط التقدم
         const percent = (checkedCount / total) * 100;
         progressBar.style.width = `${percent}%`;
         progressText.textContent = `تمت الموافقة على (${checkedCount}/${total}) بنداً`;
 
-        // تفعيل الزر إذا اكتملت الشروط
         if (checkedCount === total && name.length >= 8) {
             submitBtn.disabled = false;
             submitBtn.classList.replace('bg-gray-400', 'bg-blue-600');
@@ -193,98 +186,92 @@
             submitBtn.disabled = true;
             submitBtn.classList.replace('bg-blue-600', 'bg-gray-400');
             submitBtn.classList.add('cursor-not-allowed');
-            
-            if (checkedCount < total) {
-                btnLabel.textContent = "يرجى الموافقة على جميع البنود";
-            } else {
-                btnLabel.textContent = "يرجى كتابة الاسم الثلاثي كاملاً";
-            }
+            btnLabel.textContent = checkedCount < total ? "يرجى الموافقة على جميع البنود" : "يرجى كتابة الاسم الثلاثي";
         }
     }
 
-    // ربط الأحداث
-    checks.forEach(check => {
-        check.addEventListener('change', () => {
-            check.closest('.law-item').classList.toggle('active', check.checked);
-            validate();
-        });
-    });
+    checks.forEach(check => check.addEventListener('change', () => {
+        check.closest('.law-item').classList.toggle('active', check.checked);
+        validate();
+    }));
     fullNameInput.addEventListener('input', validate);
 
-    // التشغيل الأولي للبيانات والاشتراك في التحديثات
-    const startDataSync = async () => {
+    // معالجة إعدادات فايربيس للعمل على جيت هاب
+    let db, auth, appId;
+    try {
+        const config = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        appId = typeof __app_id !== 'undefined' ? __app_id : 'mahbran-public-v3';
+        
+        if (config) {
+            const app = initializeApp(config);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            setupDataSync();
+        } else {
+            console.log("Firebase config not found. Sync disabled.");
+        }
+    } catch (e) {
+        console.error("Initialization Error:", e);
+    }
+
+    async function setupDataSync() {
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await signInWithCustomToken(auth, __initial_auth_token);
             } else {
                 await signInAnonymously(auth);
             }
-        } catch (e) { console.error("Auth Error", e); }
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                // جلب قائمة الموقعين وعرضها
-                const sigCol = collection(db, 'artifacts', appId, 'public', 'data', 'verified_signatures');
-                onSnapshot(sigCol, (snapshot) => {
-                    signaturesTableBody.innerHTML = '';
-                    const docs = snapshot.docs
-                        .map(d => d.data())
-                        .sort((a, b) => (b.signedAt?.seconds || 0) - (a.signedAt?.seconds || 0));
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    const sigCol = collection(db, 'artifacts', appId, 'public', 'data', 'verified_signatures');
+                    onSnapshot(sigCol, (snapshot) => {
+                        signaturesTableBody.innerHTML = '';
+                        const docs = snapshot.docs.map(d => d.data())
+                            .sort((a, b) => (b.signedAt?.seconds || 0) - (a.signedAt?.seconds || 0));
 
-                    if (docs.length === 0) {
-                        signaturesTableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400">لا يوجد موقعون حتى الآن</td></tr>';
-                        return;
-                    }
+                        if (docs.length === 0) {
+                            signaturesTableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400 italic">بانتظار أول توقيع...</td></tr>';
+                            return;
+                        }
 
-                    docs.forEach(data => {
-                        const date = data.signedAt ? new Date(data.signedAt.seconds * 1000).toLocaleDateString('ar-EG') : 'جاري المعالجة';
-                        const row = `
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-4 py-3 font-medium text-gray-800">${data.name}</td>
-                                <td class="px-4 py-3 text-gray-500">${date}</td>
-                                <td class="px-4 py-3 text-green-600 font-bold text-xs md:text-sm">✓ تم التوقيع</td>
-                            </tr>
-                        `;
-                        signaturesTableBody.insertAdjacentHTML('beforeend', row);
+                        docs.forEach(data => {
+                            const date = data.signedAt ? new Date(data.signedAt.seconds * 1000).toLocaleDateString('ar-EG') : 'الآن';
+                            signaturesTableBody.insertAdjacentHTML('beforeend', `
+                                <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50">
+                                    <td class="px-4 py-3 font-medium text-gray-800">${data.name}</td>
+                                    <td class="px-4 py-3 text-gray-500">${date}</td>
+                                    <td class="px-4 py-3 text-green-600 font-bold text-xs md:text-sm">✓ معتمد</td>
+                                </tr>
+                            `);
+                        });
                     });
-                });
-            }
-        });
-    };
+                }
+            });
+        } catch (e) { console.error(e); }
+    }
 
-    startDataSync();
-
-    // إرسال التوقيع
     submitBtn.addEventListener('click', async () => {
-        const user = auth.currentUser;
-        if (!user) return;
+        if (!db || !auth.currentUser) {
+            alert("ميزة التخزين السحابي تعمل فقط داخل المنصة. يرجى استخدام الرابط الرسمي.");
+            return;
+        }
 
         const nameValue = fullNameInput.value.trim();
         submitBtn.disabled = true;
         document.getElementById('btnLoader').classList.remove('hidden');
-        btnLabel.textContent = "جاري الحفظ...";
 
         try {
             await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'verified_signatures'), {
                 name: nameValue,
-                uid: user.uid,
-                signedAt: serverTimestamp(),
-                version: '3.1'
+                signedAt: serverTimestamp()
             });
-
-            // إعادة تعيين الحقول
-            fullNameInput.value = '';
-            checks.forEach(c => { c.checked = false; c.closest('.law-item').classList.remove('active'); });
-            validate();
-            document.getElementById('btnLoader').classList.add('hidden');
-            
-            // تنبيه نجاح بسيط
-            alert("تم توثيق توقيعك بنجاح في قاعدة البيانات.");
+            alert("تم التوقيع بنجاح!");
+            window.location.reload();
         } catch (e) {
-            console.error(e);
+            alert("خطأ في الاتصال");
             submitBtn.disabled = false;
             document.getElementById('btnLoader').classList.add('hidden');
-            validate();
         }
     });
 </script>
